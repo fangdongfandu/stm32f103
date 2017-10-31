@@ -62,6 +62,7 @@ static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 static void flash_protect_function(void);
+static void flash_clear_protect_function(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -129,7 +130,9 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
   log_printf("hello world!\r\n");
-  HAL_Delay(1000);
+  HAL_Delay(5000);
+      if(HAL_GPIO_ReadPin(clear_GPIO_Port,clear_Pin) == RESET)
+          flash_clear_protect_function();
   }
   /* USER CODE END 3 */
 
@@ -247,20 +250,30 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(clear_GPIO_Port, clear_Pin, GPIO_PIN_SET);
+
   /*Configure GPIO pin : LED_Pin */
   GPIO_InitStruct.Pin = LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : clear_Pin */
+  GPIO_InitStruct.Pin = clear_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(clear_GPIO_Port, &GPIO_InitStruct);
+
 }
 
 /* USER CODE BEGIN 4 */
 static void flash_protect_function(void)
 {
-    __HAL_FLASH_PREFETCH_BUFFER_DISABLE();
+//    __HAL_FLASH_PREFETCH_BUFFER_DISABLE();
     HAL_FLASHEx_OBGetConfig(&OBInit);
-    if(OBInit.RDPLevel == RESET)
+    log_printf("OBInit.RDPLevel :%x\r\n",OBInit.RDPLevel);
+    if(OBInit.RDPLevel == OB_RDP_LEVEL_0)
     {
         OBInit.OptionType = OPTIONBYTE_RDP;
         OBInit.RDPLevel = OB_RDP_LEVEL_1;
@@ -270,9 +283,33 @@ static void flash_protect_function(void)
         HAL_FLASH_OB_Launch();
         HAL_FLASH_OB_Lock();
         HAL_FLASH_Lock();
+//        __set_FAULTMASK(1);
+//        NVIC_SystemReset();
     }
 
-    __HAL_FLASH_PREFETCH_BUFFER_ENABLE();
+//    __HAL_FLASH_PREFETCH_BUFFER_ENABLE();
+
+}
+
+static void flash_clear_protect_function(void)
+{
+//    __HAL_FLASH_PREFETCH_BUFFER_DISABLE();
+    HAL_FLASHEx_OBGetConfig(&OBInit);
+    log_printf("OBInit.RDPLevel :%x\r\n",OBInit.RDPLevel);
+    if(OBInit.RDPLevel == OB_RDP_LEVEL_1)
+    {
+        OBInit.OptionType = OPTIONBYTE_RDP;
+        OBInit.RDPLevel = OB_RDP_LEVEL_0;
+        HAL_FLASH_Unlock();
+        HAL_FLASH_OB_Unlock();
+        HAL_FLASHEx_OBProgram(&OBInit);
+        HAL_FLASH_OB_Launch();
+        HAL_FLASH_OB_Lock();
+        HAL_FLASH_Lock();
+//        __set_FAULTMASK(1);
+//        NVIC_SystemReset();
+    }
+//    __HAL_FLASH_PREFETCH_BUFFER_ENABLE();
 
 }
 /* USER CODE END 4 */
